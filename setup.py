@@ -20,7 +20,7 @@ def get_long_description() -> str:
 
 
 setup(
-    name="pyvlxtest",
+    name="pyvlxwmrtest",
     version=VERSION,
     download_url="https://github.com/Julius2342/pyvlx/archive/" + VERSION + ".zip",
     url="https://github.com/Julius2342/pyvlx",
