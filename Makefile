@@ -38,7 +38,7 @@ isort:
 	@isort --check-only test examples pyvlx
 
 mypy:
-	@mypy --install-types --non-interactive pyvlx
+	@mypy pyvlx
 
 build:
 	@python3 -m build

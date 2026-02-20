@@ -4,8 +4,8 @@
 #
 #    pip-compile --output-file=requirements/testing.txt --strip-extras requirements/testing.in
 #
--e .[lint,test]
-    # via -r requirements/testing.in
+-e .
+    # via -
 astroid==4.0.4
     # via pylint
 coverage==7.13.4
@@ -22,7 +22,9 @@ flake8-isort==7.0.0
 flake8-pyproject==1.2.4
     # via pyvlx
 ifaddr==0.2.0
-    # via zeroconf
+    # via
+    #   -r requirements/production.txt
+    #   zeroconf
 iniconfig==2.3.0
     # via pytest
 isort==7.0.0
@@ -67,12 +69,18 @@ pytest==9.0.2
 pytest-cov==7.0.0
     # via pyvlx
 pyyaml==6.0.3
-    # via pyvlx
+    # via
+    #   -r requirements/production.txt
+    #   pyvlx
 snowballstemmer==3.0.1
     # via pydocstyle
 tomlkit==0.14.0
     # via pylint
+types-pyyaml==6.0.12.20250915
+    # via pyvlx
 typing-extensions==4.15.0
     # via mypy
 zeroconf==0.148.0
-    # via pyvlx
+    # via
+    #   -r requirements/production.txt
+    #   pyvlx
