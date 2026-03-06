@@ -115,7 +115,8 @@ class NodeUpdater:
             PYVLXLOG.debug(
                 "%s is opening (%s->%s), estimated completion in %ss at %s",
                 node.name, position, target,
-                frame.remaining_time, node.estimated_completion
+                frame.remaining_time, 
+                node.estimated_completion.strftime("%Y-%m-%d %H:%M:%S")
             )
 
         elif (position.position < target.position <= Parameter.MAX) and (
@@ -132,7 +133,8 @@ class NodeUpdater:
             PYVLXLOG.debug(
                 "%s is closing (%s->%s), estimated completion in %ss at %s",
                 node.name, position, target,
-                frame.remaining_time, node.estimated_completion
+                frame.remaining_time, 
+                node.estimated_completion.strftime("%Y-%m-%d %H:%M:%S")
             )
 
         else:
@@ -186,7 +188,6 @@ class NodeUpdater:
             FrameNodeStatePositionChangedNotification,
         ],
     ) -> None:
-        PYVLXLOG.debug("NodeUpdater process frame: %s", frame)
         if frame.node_id not in self.pyvlx.nodes:
             PYVLXLOG.warning("NodeUpdater: Received state frame for unknown node_id %s", frame.node_id)
             return
@@ -208,7 +209,7 @@ class NodeUpdater:
         frame: FrameCommandRunStatusNotification,
     ) -> None:
         if frame.index_id is None or frame.index_id not in self.pyvlx.nodes:
-            PYVLXLOG.warning("NodeUpdater: Received status request notification for unknown node_id %s", frame.index_id)
+            PYVLXLOG.warning("NodeUpdater: Received FrameCommandRunStatusNotification for unknown index_id %s", frame.index_id)
             return
         node = self.pyvlx.nodes[frame.index_id]
 
