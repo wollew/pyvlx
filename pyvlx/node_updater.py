@@ -115,7 +115,7 @@ class NodeUpdater:
             PYVLXLOG.debug(
                 "%s is opening (%s->%s), estimated completion in %ss at %s",
                 node.name, position, target,
-                frame.remaining_time, 
+                frame.remaining_time,
                 node.estimated_completion.strftime("%Y-%m-%d %H:%M:%S")
             )
 
@@ -133,7 +133,7 @@ class NodeUpdater:
             PYVLXLOG.debug(
                 "%s is closing (%s->%s), estimated completion in %ss at %s",
                 node.name, position, target,
-                frame.remaining_time, 
+                frame.remaining_time,
                 node.estimated_completion.strftime("%Y-%m-%d %H:%M:%S")
             )
 
