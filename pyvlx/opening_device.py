@@ -63,7 +63,7 @@ class OpeningDevice(Node):
         self.close_position_target: int = 100
         self._update_task: Task | None = None
 
-    def _translate_position(self, position: Position) -> Position:
+    def translate_position(self, position: Position) -> Position:
         """Translate position for device-specific interpretation.
 
         Override in subclasses to invert or transform positions.
@@ -115,7 +115,7 @@ class OpeningDevice(Node):
             pyvlx=self.pyvlx,
             wait_for_completion=wait_for_completion,
             node_id=self.node_id,
-            parameter=self._translate_position(position),
+            parameter=self.translate_position(position),
             functional_parameter=fp,
         )
         await command.send()
@@ -573,7 +573,7 @@ class HorizontalAwning(OpeningDevice):
     of vertical awnings and roller shutters.
     """
 
-    def _translate_position(self, position: Position) -> Position:
+    def translate_position(self, position: Position) -> Position:
         """Invert position for horizontal awnings."""
         if position.position <= Parameter.MAX:
             return Position(position_percent=100 - position.position_percent)

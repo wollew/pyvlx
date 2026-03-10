@@ -262,7 +262,7 @@ class TestOpeningDevice(IsolatedAsyncioTestCase):
         )
 
     def test_horizontal_awning_position_inverted(self) -> None:
-        """Test that HorizontalAwning inverts position via _translate_position."""
+        """Test that HorizontalAwning inverts position via translate_position."""
         pyvlx = self.mocked_pyvlx
         awning = HorizontalAwning(
             pyvlx=pyvlx,
@@ -272,17 +272,17 @@ class TestOpeningDevice(IsolatedAsyncioTestCase):
         )
         # 20% input should translate to 80% for KLF200
         pos = Position(position_percent=20)
-        translated = awning._translate_position(pos)
+        translated = awning.translate_position(pos)
         self.assertEqual(translated.position_percent, 80)
 
         # 0% (closed/retracted) should translate to 100%
         pos = Position(position_percent=0)
-        translated = awning._translate_position(pos)
+        translated = awning.translate_position(pos)
         self.assertEqual(translated.position_percent, 100)
 
         # 100% (open/extended) should translate to 0%
         pos = Position(position_percent=100)
-        translated = awning._translate_position(pos)
+        translated = awning.translate_position(pos)
         self.assertEqual(translated.position_percent, 0)
 
     def test_awning_position_not_inverted(self) -> None:
@@ -295,7 +295,7 @@ class TestOpeningDevice(IsolatedAsyncioTestCase):
             serial_number="aa:bb:aa:bb:aa:bb:aa:23",
         )
         pos = Position(position_percent=20)
-        translated = awning._translate_position(pos)
+        translated = awning.translate_position(pos)
         self.assertEqual(translated.position_percent, 20)
 
     def test_eq(self) -> None:
