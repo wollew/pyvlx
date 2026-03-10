@@ -96,8 +96,8 @@ class NodeUpdater:
         ]
     ) -> bool:
 
-        position = Position(frame.current_position)
-        target = Position(frame.target)
+        position = node._translate_position(Position(frame.current_position))
+        target = node._translate_position(Position(frame.target))
 
         node_changed = False
 
@@ -161,8 +161,8 @@ class NodeUpdater:
 
         node_changed = False
         if isinstance(node, OpeningDevice):
-            position = Position(frame.current_position)
-            target = Position(frame.target)
+            position = node._translate_position(Position(frame.current_position))
+            target = node._translate_position(Position(frame.target))
             if position.position <= Parameter.MAX:
                 node_changed |= _set_node_property(node, "position", position)
                 node_changed |= _set_node_property(node, "target", target)

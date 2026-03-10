@@ -3,8 +3,8 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from pyvlx import (
-    Awning, Blade, Blind, CurrentPosition, OpeningDevice, Parameter, Position,
-    PyVLX, RollerShutter, Window)
+    Awning, Blade, Blind, CurrentPosition, HorizontalAwning, OpeningDevice,
+    Parameter, Position, PyVLX, RollerShutter, Window)
 from pyvlx.connection import Connection
 from pyvlx.const import LimitationTime, LimitationType, Velocity
 from pyvlx.parameter import IgnorePosition
@@ -245,6 +245,58 @@ class TestOpeningDevice(IsolatedAsyncioTestCase):
             str(awning),
             '<Awning name="Test Awning" node_id="23" serial_number="aa:bb:aa:bb:aa:bb:aa:23" position="UNKNOWN"/>',
         )
+
+    def test_horizontal_awning_str(self) -> None:
+        """Test string representation of HorizontalAwning object."""
+        pyvlx = self.mocked_pyvlx
+        awning = HorizontalAwning(
+            pyvlx=pyvlx,
+            node_id=23,
+            name="Test Horizontal Awning",
+            serial_number="aa:bb:aa:bb:aa:bb:aa:23",
+        )
+        self.assertEqual(
+            str(awning),
+            '<HorizontalAwning name="Test Horizontal Awning" node_id="23"'
+            ' serial_number="aa:bb:aa:bb:aa:bb:aa:23" position="UNKNOWN"/>',
+        )
+
+    def test_horizontal_awning_position_inverted(self) -> None:
+        """Test that HorizontalAwning inverts position via _translate_position."""
+        pyvlx = self.mocked_pyvlx
+        awning = HorizontalAwning(
+            pyvlx=pyvlx,
+            node_id=23,
+            name="Test Horizontal Awning",
+            serial_number="aa:bb:aa:bb:aa:bb:aa:23",
+        )
+        # 20% input should translate to 80% for KLF200
+        pos = Position(position_percent=20)
+        translated = awning._translate_position(pos)
+        self.assertEqual(translated.position_percent, 80)
+
+        # 0% (closed/retracted) should translate to 100%
+        pos = Position(position_percent=0)
+        translated = awning._translate_position(pos)
+        self.assertEqual(translated.position_percent, 100)
+
+        # 100% (open/extended) should translate to 0%
+        pos = Position(position_percent=100)
+        translated = awning._translate_position(pos)
+        self.assertEqual(translated.position_percent, 0)
+
+    def test_awning_position_not_inverted(self) -> None:
+        """Test that regular Awning does not invert position."""
+        pyvlx = self.mocked_pyvlx
+        awning = Awning(
+            pyvlx=pyvlx,
+            node_id=23,
+            name="Test Awning",
+            serial_number="aa:bb:aa:bb:aa:bb:aa:23",
+        )
+        pos = Position(position_percent=20)
+        translated = awning._translate_position(pos)
+        self.assertEqual(translated.position_percent, 20)
 
     def test_eq(self) -> None:
         """Testing eq method with positive results."""

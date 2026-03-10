@@ -63,6 +63,14 @@ class OpeningDevice(Node):
         self.close_position_target: int = 100
         self._update_task: Task | None = None
 
+    def _translate_position(self, position: Position) -> Position:
+        """Translate position for device-specific interpretation.
+
+        Override in subclasses to invert or transform positions.
+        Applied to both outgoing (set_position) and incoming (KLF200 updates) positions.
+        """
+        return position
+
     async def _update_calls(self) -> None:
         """While cover are moving, perform periodically update calls."""
         while self.is_moving():
@@ -107,7 +115,7 @@ class OpeningDevice(Node):
             pyvlx=self.pyvlx,
             wait_for_completion=wait_for_completion,
             node_id=self.node_id,
-            parameter=position,
+            parameter=self._translate_position(position),
             functional_parameter=fp,
         )
         await command.send()
@@ -555,6 +563,21 @@ class Blind(OpeningDevice):
 
 class Awning(OpeningDevice):
     """Awning objects."""
+
+
+class HorizontalAwning(OpeningDevice):
+    """Horizontal awning objects with inverted position.
+
+    Horizontal awnings (e.g. patio awnings) are considered "open" when
+    fully extended and "closed" when retracted, which is the inverse
+    of vertical awnings and roller shutters.
+    """
+
+    def _translate_position(self, position: Position) -> Position:
+        """Invert position for horizontal awnings."""
+        if position.position <= Parameter.MAX:
+            return Position(position_percent=100 - position.position_percent)
+        return position
 
 
 class DualRollerShutter(OpeningDevice):

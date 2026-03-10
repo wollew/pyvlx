@@ -10,8 +10,8 @@ from .log import PYVLXLOG
 from .node import Node
 from .on_off_switch import OnOffSwitch
 from .opening_device import (
-    Awning, Blade, Blind, DualRollerShutter, GarageDoor, Gate, RollerShutter,
-    Window)
+    Awning, Blade, Blind, DualRollerShutter, GarageDoor, Gate,
+    HorizontalAwning, RollerShutter, Window)
 
 if TYPE_CHECKING:
     from pyvlx import PyVLX
@@ -93,12 +93,20 @@ def convert_frame_to_node(
             position_parameter=frame.current_position,
         )
 
+    if frame.node_type == NodeTypeWithSubtype.VERTICAL_EXTERIOR_AWNING:
+        return Awning(
+            pyvlx=pyvlx,
+            node_id=frame.node_id,
+            name=frame.name,
+            serial_number=frame.serial_number,
+            position_parameter=frame.current_position,
+        )
+
     if frame.node_type in [
-        NodeTypeWithSubtype.VERTICAL_EXTERIOR_AWNING,
         NodeTypeWithSubtype.HORIZONTAL_AWNING,
         NodeTypeWithSubtype.HORIZONTAL_AWNING_ALT,
     ]:
-        return Awning(
+        return HorizontalAwning(
             pyvlx=pyvlx,
             node_id=frame.node_id,
             name=frame.name,
