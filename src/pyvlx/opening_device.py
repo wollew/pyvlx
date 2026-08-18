@@ -52,7 +52,8 @@ class OpeningDevice(Node):
         self.limitation_min: Position = IgnorePosition()
         self.limitation_max: Position = IgnorePosition()
         self.limitation_time: LimitationTime = LimitationTime.CLEAR_ALL
-        self.limitation_originator: Originator = Originator.USER
+        self.limitation_min_originator: Originator = Originator.USER
+        self.limitation_max_originator: Originator = Originator.USER
 
         self.is_opening: bool = False
         self.is_closing: bool = False
@@ -245,6 +246,8 @@ class OpeningDevice(Node):
             raise PyVLXException(f"Unable to get minimum limitation for node_id {self.node_id}")
 
         self.limitation_min = Position(position_percent=command_get_limitation.min_value)
+        assert command_get_limitation.originator is not None
+        self.limitation_min_originator = command_get_limitation.originator
 
         return self.limitation_min
 
@@ -260,6 +263,8 @@ class OpeningDevice(Node):
             raise PyVLXException(f"Unable to get maximum limitation for node_id {self.node_id}")
 
         self.limitation_max = Position(position_percent=command_get_limitation.max_value)
+        assert command_get_limitation.originator is not None
+        self.limitation_max_originator = command_get_limitation.originator
 
         return self.limitation_max
 

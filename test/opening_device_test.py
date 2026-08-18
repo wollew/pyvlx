@@ -6,7 +6,7 @@ from pyvlx import (
     Awning, Blade, Blind, CurrentPosition, OpeningDevice, Parameter, Position,
     PyVLX, RollerShutter, Window)
 from pyvlx.connection import Connection
-from pyvlx.const import LimitationTime, LimitationType, Velocity
+from pyvlx.const import LimitationTime, LimitationType, Originator, Velocity
 from pyvlx.parameter import IgnorePosition
 
 
@@ -176,6 +176,8 @@ class TestOpeningDevice(IsolatedAsyncioTestCase):
         mock_get_limitation_instance = AsyncMock()
         mock_get_limitation_instance.success = True
         mock_get_limitation_instance.min_value = 10
+        mock_get_limitation_instance.max_value = 90
+        mock_get_limitation_instance.originator = Originator.EMERGENCY
         mock_get_limitation.return_value = mock_get_limitation_instance
 
         result = await opening_device.get_limitation_min()
@@ -188,6 +190,10 @@ class TestOpeningDevice(IsolatedAsyncioTestCase):
         mock_get_limitation_instance.do_api_call.assert_awaited_once()
         self.assertEqual(result, Position(position_percent=10))
         self.assertEqual(opening_device.limitation_min, Position(position_percent=10))
+        self.assertEqual(opening_device.limitation_min_originator, Originator.EMERGENCY)
+        # max_limitation should be unchanged
+        self.assertEqual(opening_device.limitation_max, IgnorePosition())
+        self.assertEqual(opening_device.limitation_max_originator, Originator.USER)
 
     @patch("pyvlx.opening_device.GetLimitation")
     async def test_get_limitation_max(self, mock_get_limitation: MagicMock) -> None:
@@ -196,7 +202,9 @@ class TestOpeningDevice(IsolatedAsyncioTestCase):
 
         mock_get_limitation_instance = AsyncMock()
         mock_get_limitation_instance.success = True
+        mock_get_limitation_instance.min_value = 10
         mock_get_limitation_instance.max_value = 90
+        mock_get_limitation_instance.originator = Originator.EMERGENCY
         mock_get_limitation.return_value = mock_get_limitation_instance
 
         result = await opening_device.get_limitation_max()
@@ -209,6 +217,10 @@ class TestOpeningDevice(IsolatedAsyncioTestCase):
         mock_get_limitation_instance.do_api_call.assert_awaited_once()
         self.assertEqual(result, Position(position_percent=90))
         self.assertEqual(opening_device.limitation_max, Position(position_percent=90))
+        self.assertEqual(opening_device.limitation_max_originator, Originator.EMERGENCY)
+        # min_limitation should be unchanged
+        self.assertEqual(opening_device.limitation_min, IgnorePosition())
+        self.assertEqual(opening_device.limitation_min_originator, Originator.USER)
 
     def test_window_str(self) -> None:
         """Test string representation of Window object."""
