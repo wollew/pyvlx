@@ -59,9 +59,7 @@ class Parameter: # noqa: PLW1641
             Parameter.TARGET,
             Parameter.DUAL_SHUTTER_CURTAINS,
         }
-        if value in valid_values:
-            return True
-        return False
+        return value in valid_values
 
     @staticmethod
     def from_raw(raw: bytes) -> bytes:

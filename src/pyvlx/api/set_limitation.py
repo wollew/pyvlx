@@ -23,13 +23,15 @@ class SetLimitation(ApiEvent):
 
     # NOTE: Required to always set both limits at the same time.
     # If setting only one limit to a value, the other to Ignore, Default or Current, the gateway will reject the Frame.
-    def __init__(self, pyvlx: "PyVLX", node_id: int, limitation_value_min: Position = IgnorePosition(),
-                 limitation_value_max: Position = IgnorePosition(), limitation_time: LimitationTime = LimitationTime.UNLIMITED):
+    def __init__(self, pyvlx: "PyVLX", node_id: int,
+                 limitation_value_min: Position | None = None,
+                 limitation_value_max: Position | None = None,
+                 limitation_time: LimitationTime = LimitationTime.UNLIMITED):
         """Initialize SetLimitation class."""
         super().__init__(pyvlx=pyvlx)
         self.node_id = node_id
-        self.limitation_value_min = limitation_value_min
-        self.limitation_value_max = limitation_value_max
+        self.limitation_value_min = limitation_value_min if limitation_value_min is not None else IgnorePosition()
+        self.limitation_value_max = limitation_value_max if limitation_value_max is not None else IgnorePosition()
         self.success = False
         self.session_id: int | None = None
         self.limitation_time = limitation_time
@@ -50,7 +52,7 @@ class SetLimitation(ApiEvent):
             # the API call successful and complete at this point. (see Spec section 10.5.4)
             self.success = True
             return True
-        if isinstance(frame, FrameSessionFinishedNotification):
+        if isinstance(frame, FrameSessionFinishedNotification):  # noqa: SIM103
             # The session finished without us having seen a notification frame with the new limitation values, so
             # we consider the API call complete at this point.
             # Success remains False, since we never received the notification frame with the new values.

@@ -12,7 +12,7 @@ def string_to_bytes(string: str, size: int) -> bytes:
 
 def bytes_to_string(raw: bytes) -> str:
     """Convert bytes to string."""
-    ret = bytes()
+    ret = b""
     for byte in raw:
         if byte == 0x00:
             return ret.decode("utf-8")

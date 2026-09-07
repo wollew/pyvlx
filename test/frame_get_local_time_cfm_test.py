@@ -1,6 +1,6 @@
 """Unit tests for FrameGetLocalTimeConfirmation."""
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pyvlx.api.frame_creation import frame_from_raw
 from pyvlx.api.frames import FrameGetLocalTimeConfirmation
@@ -14,7 +14,7 @@ class TestFrameGetLocalTimeConfirmation(unittest.TestCase):
         frame = FrameGetLocalTimeConfirmation()
         frame.time.localtime = datetime(2020, 12, 3, 18, 19, 19, 176900)
         frame.time.utctime = datetime(
-            2020, 12, 3, 18, 19, 19, 176900, tzinfo=timezone.utc
+            2020, 12, 3, 18, 19, 19, 176900, tzinfo=UTC
         )
         self.assertEqual(
             bytes(frame), b"\x00\x12 \x05_\xc9,'\x13\x13\x12\x03\x0c\x00x\x04\x01R\xffg"

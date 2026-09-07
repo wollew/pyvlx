@@ -72,12 +72,13 @@ line-length = 160
 extend-exclude = ["_version.py"]
 
 [tool.ruff.lint]
-select = ["D", "I", "E", "W", "F", "PL", "RUF100", "ARG"]
+extend-select = ["D", "I", "E", "W", "F", "PL", "RUF", "ARG"]
 ignore = [
     "E203",     # whitespace-before-punctuation
     "E226",     # missing-whitespace-around-arithmetic-operator
     "PLR0912",  # too-many-branches
     "PLR0913",  # too-many-arguments
+    "DTZ",      # setting TZ is currently not supported in pyvlx, so working with anything but naive datetime doesn't make sense
 ]
 
 [tool.ruff.lint.pydocstyle]

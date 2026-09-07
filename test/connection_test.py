@@ -27,9 +27,8 @@ class TestConnection(IsolatedAsyncioTestCase):
         mock_loop = MagicMock()
         mock_loop.create_connection = AsyncMock(side_effect=asyncio.TimeoutError)
 
-        with patch("pyvlx.connection.asyncio.get_running_loop", return_value=mock_loop):
-            with self.assertRaises(PyVLXException) as raised_exception:
-                await self.connection.connect()
+        with patch("pyvlx.connection.asyncio.get_running_loop", return_value=mock_loop), self.assertRaises(PyVLXException) as raised_exception:
+            await self.connection.connect()
 
         self.assertFalse(self.connection.connected)
         self.assertIsNone(self.connection.transport)
@@ -40,9 +39,8 @@ class TestConnection(IsolatedAsyncioTestCase):
         mock_loop = MagicMock()
         mock_loop.create_connection = AsyncMock(side_effect=ssl.SSLError("SSL error"))
 
-        with patch("pyvlx.connection.asyncio.get_running_loop", return_value=mock_loop):
-            with self.assertRaises(PyVLXException) as raised_exception:
-                await self.connection.connect()
+        with patch("pyvlx.connection.asyncio.get_running_loop", return_value=mock_loop), self.assertRaises(PyVLXException) as raised_exception:
+            await self.connection.connect()
 
         self.assertFalse(self.connection.connected)
         self.assertIsNone(self.connection.transport)
