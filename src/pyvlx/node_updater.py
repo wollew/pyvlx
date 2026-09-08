@@ -106,9 +106,8 @@ class NodeUpdater:
                 if position_lower_curtain.position <= Parameter.MAX:
                     node_changed |= _set_node_property(node, "position_lower_curtain", position_lower_curtain)
 
-        elif isinstance(node, OpeningDevice):
-            if status_position_is_concrete:
-                node_changed |= _set_node_property(node, "position", status_position)
+        elif isinstance(node, OpeningDevice) and status_position_is_concrete:
+            node_changed |= _set_node_property(node, "position", status_position)
 
         if (
             isinstance(node, OpeningDevice)

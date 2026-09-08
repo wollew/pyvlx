@@ -44,15 +44,14 @@ class GetLimitation(ApiEvent):
         """Handle incoming API frame, return True if this was the expected frame."""
         if isinstance(frame, FrameGetLimitationStatusConfirmation):
             return False  # Wait for Notification Frame
-        if isinstance(frame, FrameGetLimitationStatusNotification):
-            if frame.session_id == self.session_id:
-                self.success = True
-                self.min_value_raw = frame.min_value
-                self.max_value_raw = frame.max_value
-                self.originator = frame.limit_originator
-                self.limit_time = frame.limit_time
-                self.notification_frame = frame
-                return True
+        if isinstance(frame, FrameGetLimitationStatusNotification) and frame.session_id == self.session_id:
+            self.success = True
+            self.min_value_raw = frame.min_value
+            self.max_value_raw = frame.max_value
+            self.originator = frame.limit_originator
+            self.limit_time = frame.limit_time
+            self.notification_frame = frame
+            return True
         return False
 
     def request_frame(self) -> FrameGetLimitationStatus:

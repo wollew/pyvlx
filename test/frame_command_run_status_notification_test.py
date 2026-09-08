@@ -5,34 +5,33 @@ from pyvlx.api.frame_creation import frame_from_raw
 from pyvlx.api.frames import FrameCommandRunStatusNotification
 from pyvlx.const import RunStatus, StatusReply
 
+EXAMPLE_FRAMES = [
+    (
+        "execution_completed",
+        b"\x00\x10\x03\x02\x03\xe8\x07\x17*\x059\x00\xee\x00\x00\x00\x00\x12",
+        RunStatus.EXECUTION_COMPLETED,
+        StatusReply.LIMITATION_BY_EMERGENCY,
+    ),
+    (
+        "execution_active",
+        b"\x00\x10\x03\x02\x03\xe8\x07\x17*\x059\x02\xe2\x00\x00\x00\x00\x1c",
+        RunStatus.EXECUTION_ACTIVE,
+        StatusReply.LIMITATION_BY_USER,
+    ),
+    (
+        "execution_failed",
+        b"\x00\x10\x03\x02\x03\xe8\x07\x17*\x059\x01\xe3\x00\x00\x00\x00\x1e",
+        RunStatus.EXECUTION_FAILED,
+        StatusReply.LIMITATION_BY_RAIN,
+    ),
+]
 
 class TestFrameCommandRunStatusNotification(unittest.TestCase):
     """Test class FrameCommandRunStatusNotification."""
 
-    EXAMPLE_FRAMES = [
-        (
-            "execution_completed",
-            b"\x00\x10\x03\x02\x03\xe8\x07\x17*\x059\x00\xee\x00\x00\x00\x00\x12",
-            RunStatus.EXECUTION_COMPLETED,
-            StatusReply.LIMITATION_BY_EMERGENCY,
-        ),
-        (
-            "execution_active",
-            b"\x00\x10\x03\x02\x03\xe8\x07\x17*\x059\x02\xe2\x00\x00\x00\x00\x1c",
-            RunStatus.EXECUTION_ACTIVE,
-            StatusReply.LIMITATION_BY_USER,
-        ),
-        (
-            "execution_failed",
-            b"\x00\x10\x03\x02\x03\xe8\x07\x17*\x059\x01\xe3\x00\x00\x00\x00\x1e",
-            RunStatus.EXECUTION_FAILED,
-            StatusReply.LIMITATION_BY_RAIN,
-        ),
-    ]
-
     def test_bytes(self) -> None:
         """Test FrameCommandRunStatusNotification."""
-        for name, raw, run_status, status_reply in self.EXAMPLE_FRAMES:
+        for name, raw, run_status, status_reply in EXAMPLE_FRAMES:
             with self.subTest(name=name):
                 frame = FrameCommandRunStatusNotification(
                     session_id=1000,
@@ -47,7 +46,7 @@ class TestFrameCommandRunStatusNotification(unittest.TestCase):
 
     def test_frame_from_raw(self) -> None:
         """Test parse FrameCommandRunStatusNotification from raw."""
-        for name, raw, run_status, status_reply in self.EXAMPLE_FRAMES:
+        for name, raw, run_status, status_reply in EXAMPLE_FRAMES:
             with self.subTest(name=name):
                 frame = frame_from_raw(raw)
                 self.assertIsInstance(frame, FrameCommandRunStatusNotification)

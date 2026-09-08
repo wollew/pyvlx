@@ -28,7 +28,7 @@ class OpeningDevice(Node):
         node_id: int,
         name: str,
         serial_number: str | None = None,
-        position_parameter: Parameter = Parameter(),
+        position_parameter: Parameter | None = None,
     ):
         """Initialize opening device.
 
@@ -44,6 +44,7 @@ class OpeningDevice(Node):
         super().__init__(
             pyvlx=pyvlx, node_id=node_id, name=name, serial_number=serial_number
         )
+        self.position_parameter = position_parameter if position_parameter is not None else Parameter()
         self.position: Position = Position(parameter=position_parameter)
         self.target: Position = Position(parameter=position_parameter)
         self.limitation_min: Position = IgnorePosition()
@@ -195,14 +196,16 @@ class OpeningDevice(Node):
         )
 
     async def set_position_limitations(self,
-                                       position_min: Position = IgnorePosition(),
-                                       position_max: Position = IgnorePosition()) -> None:
+                                       position_min: Position | None = None,
+                                       position_max: Position | None = None) -> None:
         """Set a minimum and maximum position limit.
 
         Parameters:
             * min_position: Position object containing the minimum position.
             * max_position: Position object containing the maximum position.
         """
+        position_min = position_min if position_min is not None else IgnorePosition()
+        position_max = position_max if position_max is not None else IgnorePosition()
         command_set_limitation = SetLimitation(
             pyvlx=self.pyvlx,
             node_id=self.node_id,
@@ -316,7 +319,7 @@ class Window(OpeningDevice):
         node_id: int,
         name: str,
         serial_number: str | None,
-        position_parameter: Parameter = Parameter(),
+        position_parameter: Parameter | None = None,
         rain_sensor: bool = False,
     ):
         """Initialize Window class.
@@ -358,7 +361,7 @@ class Blind(OpeningDevice):
         node_id: int,
         name: str,
         serial_number: str | None,
-        position_parameter: Parameter = Parameter(),
+        position_parameter: Parameter | None = None
     ):
         """Initialize Blind class.
 
@@ -637,7 +640,7 @@ class DualRollerShutter(OpeningDevice):
         node_id: int,
         name: str,
         serial_number: str | None,
-        position_parameter: Parameter = Parameter(),
+        position_parameter: Parameter | None = None
     ):
         """Initialize DualRollerShutter class.
 

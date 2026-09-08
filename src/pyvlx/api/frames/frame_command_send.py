@@ -17,7 +17,7 @@ class FrameCommandSendRequest(FrameBase):
             self,
             functional_parameter: FunctionalParams | None = None,
             node_ids: list[int] | None = None,
-            parameter: Parameter = Parameter(),
+            parameter: Parameter | None = None,
             active_parameter: int = 0,
             session_id: int | None = None,
             originator: Originator = Originator.USER,
@@ -25,7 +25,7 @@ class FrameCommandSendRequest(FrameBase):
         """Init Frame."""
         super().__init__(Command.GW_COMMAND_SEND_REQ)
         self.node_ids = node_ids if node_ids is not None else []
-        self.parameter = parameter
+        self.parameter = parameter if parameter is not None else Parameter()
         self.active_parameter = active_parameter
         self.fpi1 = 0
         self.fpi2 = 0

@@ -494,7 +494,7 @@ class ContactInputAssignement(Enum):
 class OutputID(Enum):
     """Enum class for Error and Success Output ID."""
 
-    DONT_SEND = 0  # Don’t send any pulse.
+    DONT_SEND = 0  # Don't send any pulse.
     PULSE_PORT_1 = 1  # Send pulse to output port number 1
     PULSE_PORT_2 = 2  # Send pulse to output port number 2
     PULSE_PORT_3 = 3  # Send pulse to output port number 3

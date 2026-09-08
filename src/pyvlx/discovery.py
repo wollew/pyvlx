@@ -31,12 +31,12 @@ def sanitize_hostname(hostname: str) -> str:
 class VeluxDiscovery:
     """Class to discover Velux KLF200 devices on the network."""
 
-    hosts: list[VeluxHost] = []
-    infos: list[AsyncServiceInfo | None] = []
-
     def __init__(self, zeroconf: AsyncZeroconf,) -> None:
         """Initialize VeluxDiscovery object."""
         self.zc: AsyncZeroconf = zeroconf
+        self.hosts: list[VeluxHost] = []
+        self.infos: list[AsyncServiceInfo | None] = []
+
 
     async def _async_discover_hosts(self, min_wait_time: float, expected_hosts: int | None) -> None:
         """Listen for zeroconf ServiceInfo."""
@@ -57,13 +57,12 @@ class VeluxDiscovery:
             got_host.set()
 
         def handler(name: str, **kwargs: Any) -> None:  # noqa: ARG001
-            if name.startswith(SERVICE_STARTS_WITH):
-                if name not in service_names:
-                    service_names.append(name)
-                    task = asyncio.create_task(self.zc.async_get_service_info(type_=SERVICE_TYPE, name=name))
-                    tasks.add(task)
-                    task.add_done_callback(add_info_and_host)
-                    task.add_done_callback(tasks.remove)
+            if name.startswith(SERVICE_STARTS_WITH) and name not in service_names:
+                service_names.append(name)
+                task = asyncio.create_task(self.zc.async_get_service_info(type_=SERVICE_TYPE, name=name))
+                tasks.add(task)
+                task.add_done_callback(add_info_and_host)
+                task.add_done_callback(tasks.remove)
 
         browser: AsyncServiceBrowser = AsyncServiceBrowser(self.zc.zeroconf, SERVICE_TYPE, handlers=[handler])
         if expected_hosts:
