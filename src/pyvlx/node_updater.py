@@ -330,6 +330,20 @@ class NodeUpdater:
             PYVLXLOG.warning("NodeUpdater: Received FrameCommandRunStatusNotification for unknown index_id %s", frame.index_id)
             return
         node = self.pyvlx.nodes[frame.index_id]
+        if (
+            isinstance(node, OpeningDevice)
+            and (
+                frame.session_id is None
+                or frame.session_id != node._last_movement_session_id
+            )
+        ):
+            PYVLXLOG.debug(
+                "NodeUpdater: Ignoring FrameCommandRunStatusNotification for session_id %s "
+                "(current movement session_id: %s)",
+                frame.session_id,
+                node._last_movement_session_id,
+            )
+            return
 
         node_changed = False
         node_changed |= _set_node_property(node, "last_frame_status_reply", new_value=frame.status_reply)

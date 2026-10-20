@@ -32,6 +32,23 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         self.node_updater = NodeUpdater(self.pyvlx)
         self.pyvlx.nodes = {}
 
+    @staticmethod
+    def _track_command_session(updater: NodeUpdater, node_id: int, session_id: int) -> None:
+        node = updater.pyvlx.nodes[node_id]
+        assert isinstance(node, OpeningDevice)
+        node._last_movement_session_id = session_id
+
+    async def test_only_latest_movement_session_is_tracked(self) -> None:
+        """A newer movement replaces the previous one; stop requests do not."""
+        self.pyvlx.nodes[16] = OpeningDevice(self.pyvlx, 16, "Node 16", None)
+        self.pyvlx.nodes[17] = OpeningDevice(self.pyvlx, 17, "Node 17", None)
+        self._track_command_session(self.node_updater, 16, 1)
+        self._track_command_session(self.node_updater, 16, 2)
+        self._track_command_session(self.node_updater, 17, 3)
+
+        self.assertEqual(self.pyvlx.nodes[16]._last_movement_session_id, 2)
+        self.assertEqual(self.pyvlx.nodes[17]._last_movement_session_id, 3)
+
     async def test_set_node_property_logs_unchanged_value(self) -> None:
         """Test that unchanged property logging still returns False."""
         node = OpeningDevice(
@@ -1236,6 +1253,7 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
             status_reply=StatusReply.COMMAND_COMPLETED_OK,
         )
 
+        self._track_command_session(self.node_updater, 80, 2)
         await self.node_updater.process_frame(command_status)
 
         # COMMAND_COMPLETED_OK is the reliable clean-completion marker for
@@ -1309,6 +1327,7 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
             status_reply=StatusReply.COMMAND_COMPLETED_OK,
         )
 
+        self._track_command_session(self.node_updater, 81, 2)
         await self.node_updater.process_frame(command_status)
 
         # COMMAND_COMPLETED_OK is the reliable clean-completion marker for
@@ -1529,6 +1548,7 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
 
         updater = NodeUpdater(pyvlx=mocked_pyvlx)
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 5
         frame.run_status = RunStatus.EXECUTION_COMPLETED
         frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
@@ -1538,6 +1558,35 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         self.assertEqual(mocked_node.last_frame_run_status, RunStatus.EXECUTION_COMPLETED)
         self.assertEqual(mocked_node.last_frame_status_reply, StatusReply.COMMAND_COMPLETED_OK)
         mocked_node.after_update.assert_awaited_once()
+
+    async def test_untracked_command_run_status_is_ignored(self) -> None:
+        """A CRSN from a session not sent by this instance must not update a node."""
+        gate = Gate(
+            pyvlx=self.pyvlx, node_id=16, name="Test gate", serial_number=None
+        )
+        gate.position = Position(position_percent=0)
+        gate.target = Position(position_percent=100)
+        gate.is_closing = True
+        gate.after_update = AsyncMock()  # type: ignore[method-assign]
+        self.pyvlx.nodes[16] = gate
+        self._track_command_session(self.node_updater, 16, 1)
+
+        frame = FrameCommandRunStatusNotification()
+        frame.session_id = 2
+        frame.index_id = 16
+        frame.node_parameter = NodeParameter.MP.value
+        frame.parameter_value = Position(position_percent=100).position
+        frame.run_status = RunStatus.EXECUTION_COMPLETED
+        frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
+
+        await self.node_updater.process_frame(frame)
+
+        self.assertTrue(gate.is_closing)
+        self.assertFalse(gate.is_opening)
+        self.assertEqual(gate.position, Position(position_percent=0))
+        self.assertIsNone(gate.last_frame_run_status)
+        self.assertIsNone(gate.last_frame_status_reply)
+        gate.after_update.assert_not_awaited()
 
     async def test_process_frame_dispatches_status_request_notification(self) -> None:
         """Test that process_frame dispatches FrameStatusRequestNotification."""
@@ -1589,6 +1638,7 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
 
         updater = NodeUpdater(pyvlx=mocked_pyvlx)
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 5
         frame.run_status = RunStatus.EXECUTION_COMPLETED
         frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
@@ -1614,6 +1664,7 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
 
         updater = NodeUpdater(pyvlx=mocked_pyvlx)
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 5
         frame.run_status = RunStatus.EXECUTION_COMPLETED
         frame.status_reply = StatusReply.UNKNOWN_STATUS_REPLY
@@ -1679,6 +1730,7 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
 
         updater = NodeUpdater(pyvlx=mocked_pyvlx)
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 5
         frame.run_status = RunStatus.EXECUTION_COMPLETED
         frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
@@ -1711,12 +1763,14 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         self.pyvlx.nodes[16] = gate
 
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 16
         frame.node_parameter = NodeParameter.MP.value
         frame.parameter_value = Position(position_percent=100).position
         frame.run_status = RunStatus.EXECUTION_COMPLETED
         frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
 
+        self._track_command_session(self.node_updater, 16, 1)
         await self.node_updater.process_frame(frame)
 
         self.assertFalse(gate.is_closing)
@@ -1743,12 +1797,14 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         self.pyvlx.nodes[16] = gate
 
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 16
         frame.node_parameter = NodeParameter.MP.value
         frame.parameter_value = Parameter.UNKNOWN_VALUE
         frame.run_status = RunStatus.EXECUTION_COMPLETED
         frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
 
+        self._track_command_session(self.node_updater, 16, 1)
         await self.node_updater.process_frame(frame)
 
         self.assertFalse(gate.is_closing)
@@ -1773,12 +1829,14 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         self.pyvlx.nodes[16] = gate
 
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 16
         frame.node_parameter = NodeParameter.MP.value
         frame.parameter_value = Position(position_percent=100).position
         frame.run_status = RunStatus.EXECUTION_COMPLETED
         frame.status_reply = StatusReply.COMMAND_OVERRULED
 
+        self._track_command_session(self.node_updater, 16, 1)
         await self.node_updater.process_frame(frame)
 
         self.assertFalse(gate.is_closing)
@@ -1810,8 +1868,11 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         gate.after_update = AsyncMock()  # type: ignore[method-assign]
         self.pyvlx.nodes[16] = gate
 
-        # First CRSN: original OPEN command is overruled by the STOP.
+        self._track_command_session(self.node_updater, 16, 1)
+        # The stop does not replace the movement session, so its late
+        # overrule notification still matches the tracked movement.
         overrule_frame = FrameCommandRunStatusNotification()
+        overrule_frame.session_id = 1
         overrule_frame.index_id = 16
         overrule_frame.node_parameter = NodeParameter.MP.value
         overrule_frame.parameter_value = Parameter.UNKNOWN_VALUE
@@ -1830,6 +1891,7 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         # CurrentPosition, and the gate does not report its concrete stopped
         # position via this frame.
         stop_frame = FrameCommandRunStatusNotification()
+        stop_frame.session_id = 2
         stop_frame.index_id = 16
         stop_frame.node_parameter = NodeParameter.MP.value
         stop_frame.parameter_value = Parameter.IGNORE
@@ -1838,9 +1900,8 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
 
         await self.node_updater.process_frame(stop_frame)
 
-        # Motion stays cleared and position remains stale: the STOP's
-        # COMMAND_COMPLETED_OK must NOT trigger the sync path, because the
-        # motion flags were already False before this frame arrived.
+        # The STOP session is not tracked as a movement, so its CRSN cannot
+        # trigger a position sync.
         self.assertFalse(gate.is_opening)
         self.assertFalse(gate.is_closing)
         self.assertEqual(gate.position, Position(position_percent=100))
@@ -1862,10 +1923,12 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         self.pyvlx.nodes[17] = garage
 
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 17
         frame.run_status = RunStatus.EXECUTION_FAILED
         frame.status_reply = StatusReply.UNKNOWN_STATUS_REPLY
 
+        self._track_command_session(self.node_updater, 17, 1)
         await self.node_updater.process_frame(frame)
 
         self.assertFalse(garage.is_closing)
@@ -1885,10 +1948,12 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         self.pyvlx.nodes[16] = gate
 
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 16
         frame.run_status = RunStatus.EXECUTION_ACTIVE
         frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
 
+        self._track_command_session(self.node_updater, 16, 1)
         await self.node_updater.process_frame(frame)
 
         self.assertTrue(gate.is_closing)
@@ -1907,10 +1972,12 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         self.pyvlx.nodes[16] = gate
 
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 16
         frame.run_status = RunStatus.EXECUTION_COMPLETED
         frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
 
+        self._track_command_session(self.node_updater, 16, 1)
         await self.node_updater.process_frame(frame)
 
         self.assertFalse(gate.is_closing)

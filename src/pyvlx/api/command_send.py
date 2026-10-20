@@ -1,4 +1,5 @@
 """Module for sending commands to API."""
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from ..parameter import FunctionalParams, Parameter
@@ -23,6 +24,7 @@ class CommandSend(CompletableApiEvent):
             active_parameter: int = 0,
             wait_for_completion: bool = True,
             timeout_in_seconds: int = 2,
+            session_created_callback: Callable[[int], None] | None = None,
     ):
         """Initialize CommandSend class."""
         super().__init__(pyvlx=pyvlx, timeout_in_seconds=timeout_in_seconds, wait_for_completion=wait_for_completion)
@@ -30,6 +32,7 @@ class CommandSend(CompletableApiEvent):
         self.parameter = parameter
         self.active_parameter = active_parameter
         self.functional_parameter = functional_parameter
+        self.session_created_callback = session_created_callback
 
     def check_confirmation(self, frame: FrameBase) -> bool | None:
         """Check if frame is a CommandSendConfirmation for this session."""
@@ -40,6 +43,8 @@ class CommandSend(CompletableApiEvent):
     def request_frame(self) -> FrameCommandSendRequest:
         """Construct initiating frame."""
         self.session_id = get_new_session_id()
+        if self.session_created_callback is not None:
+            self.session_created_callback(self.session_id)
         return FrameCommandSendRequest(
             node_ids=[self.node_id],
             parameter=self.parameter,

@@ -2,6 +2,7 @@
 import asyncio
 import datetime
 from asyncio import Task
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from pyvlx.api.get_limitation import GetLimitation
@@ -54,6 +55,7 @@ class OpeningDevice(Node):
 
         self.is_opening: bool = False
         self.is_closing: bool = False
+        self._last_movement_session_id: int | None = None
         self.state_received_at: datetime.datetime | None = None
         self.estimated_completion: datetime.datetime | None = None
         self.use_default_velocity: bool = False
@@ -61,6 +63,18 @@ class OpeningDevice(Node):
         self.open_position_target: int = 0
         self.close_position_target: int = 100
         self._update_task: Task | None = None
+
+    def _track_movement_session(self, session_id: int) -> None:
+        """Remember the latest movement command session for CRSN matching."""
+        self._last_movement_session_id = session_id
+
+    def _session_created_callback(
+        self, parameter: Position
+    ) -> Callable[[int], None] | None:
+        """Return a tracker for movement commands, but not stop requests."""
+        if parameter.raw == Parameter.from_int(Parameter.CURRENT):
+            return None
+        return self._track_movement_session
 
     async def _update_calls(self) -> None:
         """While cover are moving, perform periodically update calls."""
@@ -117,6 +131,7 @@ class OpeningDevice(Node):
             parameter=position,
             functional_parameter=fp,
             timeout_in_seconds=timeout_in_seconds,
+            session_created_callback=self._session_created_callback(position),
         )
         await command.send()
 
@@ -445,6 +460,7 @@ class Blind(OpeningDevice):
             wait_for_completion=wait_for_completion,
             functional_parameter=fp,
             timeout_in_seconds=timeout_in_seconds,
+            session_created_callback=self._session_created_callback(position),
         )
         await command.send()
         await self.after_update()
@@ -593,6 +609,7 @@ class Blind(OpeningDevice):
             parameter=self.target_position,
             functional_parameter=fp,
             timeout_in_seconds=timeout_in_seconds,
+            session_created_callback=self._session_created_callback(self.target_position),
         )
         await command.send()
         await self.after_update()
@@ -726,6 +743,7 @@ class DualRollerShutter(OpeningDevice):
             active_parameter=self.active_parameter,
             functional_parameter=fp,
             timeout_in_seconds=timeout_in_seconds,
+            session_created_callback=self._session_created_callback(self.target_position),
         )
         await command.send()
         if position.position <= Position.MAX:

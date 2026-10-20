@@ -90,8 +90,15 @@ class TestCommandSend(unittest.IsolatedAsyncioTestCase):
     @patch("pyvlx.api.command_send.get_new_session_id", callable=MagicMock)
     def test_request_frame(self, new_session_id_request: MagicMock) -> None:
         """Test request_frame function of CommandSend object."""
-        self.command_send.session_id = 1
         new_session_id_request.return_value = 5
-        assert isinstance(self.command_send.request_frame(), FrameCommandSendRequest)
+        session_created_callback = MagicMock()
+        command_send = CommandSend(
+            pyvlx=self.command_send.pyvlx,
+            node_id=23,
+            parameter=Parameter(),
+            session_created_callback=session_created_callback,
+        )
+        assert isinstance(command_send.request_frame(), FrameCommandSendRequest)
         assert new_session_id_request.called
-        assert self.command_send.session_id == 5 # noqa: PLR2004
+        assert command_send.session_id == 5 # noqa: PLR2004
+        session_created_callback.assert_called_once_with(5)

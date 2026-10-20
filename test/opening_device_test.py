@@ -24,6 +24,22 @@ class TestOpeningDevice(IsolatedAsyncioTestCase):
         command_send.assert_awaited_once()
         after_update.assert_not_awaited()
 
+    @patch("pyvlx.opening_device.CommandSend")
+    async def test_movement_session_callback_tracks_moves_but_not_stop(self, mock_command_send: MagicMock) -> None:
+        """Track movement sessions when created, while preserving the session across STOP."""
+        opening_device = OpeningDevice(pyvlx=self.mocked_pyvlx, node_id=23, name="Test device")
+        mock_command_send.return_value.send = AsyncMock()
+
+        await opening_device.set_position(Position(position_percent=100))
+        movement_callback = mock_command_send.call_args.kwargs["session_created_callback"]
+        self.assertIsNotNone(movement_callback)
+        movement_callback(42)
+        self.assertEqual(opening_device._last_movement_session_id, 42)
+
+        await opening_device.stop()
+        self.assertIsNone(mock_command_send.call_args.kwargs["session_created_callback"])
+        self.assertEqual(opening_device._last_movement_session_id, 42)
+
     @patch("pyvlx.opening_device.OpeningDevice.set_position", new_callable=AsyncMock)
     async def test_open(self, set_position: AsyncMock) -> None:
         """Test open function of OpeningDevice object."""
