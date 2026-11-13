@@ -337,6 +337,27 @@ class NodeUpdater:
         node_changed |= _set_node_property(node, "last_frame_status_reply", new_value=frame.status_reply)
         node_changed |= _set_node_property(node, "last_frame_run_status", new_value=frame.run_status)
 
+        movement_session_matches = (
+            isinstance(node, OpeningDevice)
+            and frame.session_id is not None
+            and frame.session_id == node._movement_session_id
+        )
+        if (
+            isinstance(node, OpeningDevice)
+            and frame.run_status == RunStatus.EXECUTION_ACTIVE
+            and frame.session_id is not None
+            and frame.node_parameter == NodeParameter.MP.value
+        ):
+            node._track_movement_session(frame.session_id)
+            movement_session_matches = True
+
+        if (
+            isinstance(node, OpeningDevice)
+            and frame.run_status in (RunStatus.EXECUTION_COMPLETED, RunStatus.EXECUTION_FAILED)
+            and movement_session_matches
+        ):
+            node._movement_session_id = None
+
         # Gates and garage doors frequently keep current_position = IGNORE for the
         # entire travel and only signal completion via this command-run-status
         # frame (run_status = COMPLETED/FAILED). Without clearing motion here,
@@ -367,10 +388,13 @@ class NodeUpdater:
             # final main-parameter value, which is more up-to-date than
             # the cached node.target if the matching state frame has not
             # arrived yet. Fall back to node.target only when the payload
-            # is not a concrete MP value.
+            # is not a concrete MP value. A limitation query can also
+            # produce a CRSN for the same node, so only sync when its
+            # session matches the tracked movement.
             if (
                 frame.run_status == RunStatus.EXECUTION_COMPLETED
                 and frame.status_reply == StatusReply.COMMAND_COMPLETED_OK
+                and movement_session_matches
             ):
                 synced_position: Position | None = None
                 if (

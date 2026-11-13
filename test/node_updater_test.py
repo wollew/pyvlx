@@ -1197,6 +1197,16 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         device.after_update = AsyncMock()  # type: ignore[method-assign]
         self.pyvlx.nodes[80] = device
 
+        active_frame = FrameCommandRunStatusNotification(
+            session_id=2,
+            index_id=80,
+            node_parameter=NodeParameter.MP.value,
+            parameter_value=Position(position_percent=100).position,
+            run_status=RunStatus.EXECUTION_ACTIVE,
+            status_reply=StatusReply.NODE_WAITING_FOR_POWER,
+        )
+        await self.node_updater.process_frame(active_frame)
+
         start_frame = FrameNodeStatePositionChangedNotification()
         start_frame.node_id = 80
         start_frame.state = OperatingState.EXECUTING
@@ -1269,6 +1279,16 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         device.target = Position(position_percent=0)
         device.after_update = AsyncMock()  # type: ignore[method-assign]
         self.pyvlx.nodes[81] = device
+
+        active_frame = FrameCommandRunStatusNotification(
+            session_id=2,
+            index_id=81,
+            node_parameter=NodeParameter.MP.value,
+            parameter_value=Position(position_percent=0).position,
+            run_status=RunStatus.EXECUTION_ACTIVE,
+            status_reply=StatusReply.NODE_WAITING_FOR_POWER,
+        )
+        await self.node_updater.process_frame(active_frame)
 
         start_frame = FrameNodeStatePositionChangedNotification()
         start_frame.node_id = 81
@@ -1710,7 +1730,9 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         gate.after_update = AsyncMock()  # type: ignore[method-assign]
         self.pyvlx.nodes[16] = gate
 
+        gate._track_movement_session(1)
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 16
         frame.node_parameter = NodeParameter.MP.value
         frame.parameter_value = Position(position_percent=100).position
@@ -1742,7 +1764,9 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         gate.after_update = AsyncMock()  # type: ignore[method-assign]
         self.pyvlx.nodes[16] = gate
 
+        gate._track_movement_session(1)
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 16
         frame.node_parameter = NodeParameter.MP.value
         frame.parameter_value = Parameter.UNKNOWN_VALUE
@@ -1772,7 +1796,9 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         gate.after_update = AsyncMock()  # type: ignore[method-assign]
         self.pyvlx.nodes[16] = gate
 
+        gate._track_movement_session(1)
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 16
         frame.node_parameter = NodeParameter.MP.value
         frame.parameter_value = Position(position_percent=100).position
@@ -1787,6 +1813,102 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         # not guarantee that the device reached node.target.
         self.assertEqual(gate.position, Position(position_percent=0))
         gate.after_update.assert_awaited_once()
+
+    async def test_limitation_status_crsn_does_not_sync_movement_position(self) -> None:
+        """A limitation query's CRSN payload is not the device's position."""
+        gate = Gate(
+            pyvlx=self.pyvlx, node_id=16, name="Test gate", serial_number=None
+        )
+        gate.position = Position(position_percent=16)
+        gate.target = Position(position_percent=0)
+        gate.is_opening = True
+        self.pyvlx.nodes[16] = gate
+
+        active_frame = FrameCommandRunStatusNotification(
+            session_id=47848,
+            index_id=16,
+            node_parameter=NodeParameter.MP.value,
+            parameter_value=Position(position_percent=100).position,
+            run_status=RunStatus.EXECUTION_ACTIVE,
+            status_reply=StatusReply.NODE_WAITING_FOR_POWER,
+        )
+        await self.node_updater.process_frame(active_frame)
+
+        # A limitation poll can end the original command as overruled. A later
+        # state frame may still indicate motion based on its remaining_time.
+        overruled_frame = FrameCommandRunStatusNotification()
+        overruled_frame.session_id = 47848
+        overruled_frame.index_id = 16
+        overruled_frame.node_parameter = NodeParameter.MP.value
+        overruled_frame.parameter_value = Parameter.UNKNOWN_VALUE
+        overruled_frame.run_status = RunStatus.EXECUTION_COMPLETED
+        overruled_frame.status_reply = StatusReply.COMMAND_OVERRULED
+        await self.node_updater.process_frame(overruled_frame)
+
+        state_frame = FrameNodeStatePositionChangedNotification()
+        state_frame.node_id = 16
+        state_frame.state = OperatingState.UNKNOWN
+        state_frame.current_position = Position(position_percent=16)
+        state_frame.target = Position(position_percent=0)
+        state_frame.remaining_time = 5
+        await self.node_updater.process_frame(state_frame)
+        self.assertTrue(gate.is_opening)
+
+        limitation_frame = FrameCommandRunStatusNotification()
+        limitation_frame.session_id = 47935
+        limitation_frame.index_id = 16
+        limitation_frame.node_parameter = NodeParameter.MP.value
+        limitation_frame.parameter_value = Position(position_percent=100).position
+        limitation_frame.run_status = RunStatus.EXECUTION_COMPLETED
+        limitation_frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
+        await self.node_updater.process_frame(limitation_frame)
+
+        self.assertFalse(gate.is_opening)
+        self.assertEqual(gate.position, Position(position_percent=16))
+
+    async def test_unmatched_crsn_preserves_movement_session(self) -> None:
+        """A query completion must not consume the session of a still-running move."""
+        gate = Gate(
+            pyvlx=self.pyvlx, node_id=16, name="Test gate", serial_number=None
+        )
+        gate.position = Position(position_percent=20)
+        gate.target = Position(position_percent=0)
+        gate.is_opening = True
+        gate._track_movement_session(47848)
+        self.pyvlx.nodes[16] = gate
+
+        limitation_frame = FrameCommandRunStatusNotification()
+        limitation_frame.session_id = 47935
+        limitation_frame.index_id = 16
+        limitation_frame.node_parameter = NodeParameter.MP.value
+        limitation_frame.parameter_value = Position(position_percent=100).position
+        limitation_frame.run_status = RunStatus.EXECUTION_COMPLETED
+        limitation_frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
+        await self.node_updater.process_frame(limitation_frame)
+
+        self.assertEqual(gate.position, Position(position_percent=20))
+        self.assertEqual(gate._movement_session_id, 47848)
+
+        state_frame = FrameNodeStatePositionChangedNotification()
+        state_frame.node_id = 16
+        state_frame.state = OperatingState.UNKNOWN
+        state_frame.current_position = Position(position_percent=20)
+        state_frame.target = Position(position_percent=0)
+        state_frame.remaining_time = 2
+        await self.node_updater.process_frame(state_frame)
+
+        movement_frame = FrameCommandRunStatusNotification()
+        movement_frame.session_id = 47848
+        movement_frame.index_id = 16
+        movement_frame.node_parameter = NodeParameter.MP.value
+        movement_frame.parameter_value = Position(position_percent=0).position
+        movement_frame.run_status = RunStatus.EXECUTION_COMPLETED
+        movement_frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
+        await self.node_updater.process_frame(movement_frame)
+
+        self.assertFalse(gate.is_opening)
+        self.assertEqual(gate.position, Position(position_percent=0))
+        self.assertIsNone(gate._movement_session_id)
 
     async def test_stop_mid_travel_does_not_sync_position_via_followup_crsn(self) -> None:
         """A stop mid-travel must not retroactively sync position to target.
@@ -1810,8 +1932,10 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         gate.after_update = AsyncMock()  # type: ignore[method-assign]
         self.pyvlx.nodes[16] = gate
 
+        gate._track_movement_session(1)
         # First CRSN: original OPEN command is overruled by the STOP.
         overrule_frame = FrameCommandRunStatusNotification()
+        overrule_frame.session_id = 1
         overrule_frame.index_id = 16
         overrule_frame.node_parameter = NodeParameter.MP.value
         overrule_frame.parameter_value = Parameter.UNKNOWN_VALUE
@@ -1861,7 +1985,9 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         garage.after_update = AsyncMock()  # type: ignore[method-assign]
         self.pyvlx.nodes[17] = garage
 
+        garage._track_movement_session(1)
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
         frame.index_id = 17
         frame.run_status = RunStatus.EXECUTION_FAILED
         frame.status_reply = StatusReply.UNKNOWN_STATUS_REPLY
@@ -1885,6 +2011,8 @@ class TestNodeUpdater(IsolatedAsyncioTestCase):
         self.pyvlx.nodes[16] = gate
 
         frame = FrameCommandRunStatusNotification()
+        frame.session_id = 1
+        frame.node_parameter = NodeParameter.MP.value
         frame.index_id = 16
         frame.run_status = RunStatus.EXECUTION_ACTIVE
         frame.status_reply = StatusReply.COMMAND_COMPLETED_OK
